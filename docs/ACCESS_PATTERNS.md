@@ -100,3 +100,27 @@ chain behind a partition scheme.
 - **IAM auth, no stored keys** — `@aws/aurora-dsql-node-postgres-connector`
   generates the IAM token; for production keyless, swap in the Vercel OIDC
   credentials provider (see `lib/db.ts`).
+
+## AWS Well-Architected alignment
+
+| Pillar | How this design meets it |
+|---|---|
+| **Operational excellence** | Append-only workload — the pattern AWS recommends for DSQL. No in-place hot-row updates, no schema migrations to run in prod, no failover runbooks (DSQL active-active self-heals). `verify()` is a single ordered read — a one-command audit. |
+| **Security** | IAM auth (no stored DB passwords); production path is the Vercel Marketplace OIDC role — keyless, the most-secure option in the H0 resources. `verify` and `/api/receipt/[id]` are read-only; only `append`/`tamper` write. |
+| **Reliability** | DSQL gives 99.99% single-Region / 99.999% multi-Region availability with synchronous replication and consistent reads — no eventual-consistency window where a tamper could hide. OCC absorbs writer contention without locks, so a slow writer never blocks the chain. |
+| **Performance efficiency** | Append = one `SELECT tail` + one `INSERT`; `verify` = one ordered `SELECT`. Serverless DSQL scales compute/I/O with load. The measured OCC signal (`retries` per append) makes the concurrency story observable, not asserted. |
+| **Cost optimization** | Runs inside the DSQL free tier (100k DPUs/mo + 1GB) for a demo-scale ledger; the production scaling path (time-bucketed prefix sharding) is documented without being prematurely built. |
+| **Sustainability** | Serverless scales to zero between writes — no idle provisioned capacity for an append-occasionally ledger. |
+
+## Multi-region: the globally-consistent ledger path
+
+DSQL multi-region peered clusters expose two Regional endpoints as **one logical
+database** with concurrent read/write and **strong data consistency** — no
+eventual consistency, no cross-region conflict resolution. For an attestation
+ledger that is the killer property: the same `UNIQUE(prev_hash)` that keeps a
+single-Region chain linear keeps a **multi-Region** chain linear — an agent in
+`us-east-1` and an agent in `eu-west-1` appending to the same logical chain cannot
+fork it, because DSQL presents one consistent key space. That is the off-chain
+equivalent of what ERC-8004 gets from L1 consensus, without gas or L1 latency.
+(The demo runs single-Region; the multi-region path is documented as the
+production next step, not prematurely built.)

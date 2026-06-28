@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { query, withOCCRetry, withConnection } from "./db";
+import { query, withOCCRetryCounted, withConnection } from "./db";
 import { receiptHash, hashPayload, GENESIS_HASH } from "./crypto";
 import type { Receipt, VerifyResult } from "./types";
 
@@ -17,8 +17,8 @@ export interface AppendInput {
  * conflict — surfaced by DSQL as an OCC conflict) the whole read-compute-insert
  * is retried against the new tail, so the chain stays linear under contention.
  */
-export async function appendReceipt(inp: AppendInput): Promise<Receipt> {
-  return withOCCRetry(async () => {
+export async function appendReceipt(inp: AppendInput): Promise<Receipt & { retries: number }> {
+  const { value, retries } = await withOCCRetryCounted(async () => {
     const last = await query<{ seq: number; receipt_hash: string }>(
       "SELECT seq, receipt_hash FROM receipts ORDER BY seq DESC LIMIT 1",
       [],
@@ -59,6 +59,7 @@ export async function appendReceipt(inp: AppendInput): Promise<Receipt> {
       ts,
     } as Receipt;
   });
+  return { ...value, retries };
 }
 
 /** List the whole chain in order. */

@@ -30,9 +30,21 @@ export async function withConnection<T>(fn: (client: any) => Promise<T>): Promis
 
 /** Run `fn` and retry on Aurora DSQL OCC conflicts (SQLSTATE 40001 / OC000). */
 export async function withOCCRetry<T>(fn: () => Promise<T>, maxAttempts = 5): Promise<T> {
+  const r = await withOCCRetryCounted(fn, maxAttempts);
+  return r.value;
+}
+
+/**
+ * Same as withOCCRetry, but reports how many OCC retries the call survived.
+ * Exposed so the stress-test endpoint can show judges a *measured* OCC signal
+ * (e.g. "5 concurrent appends → N retries, no gaps") rather than asserting it.
+ */
+export async function withOCCRetryCounted<T>(fn: () => Promise<T>, maxAttempts = 5): Promise<{ value: T; retries: number }> {
+  let retries = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      return await fn();
+      const value = await fn();
+      return { value, retries };
     } catch (e: any) {
       if (
         isOCCError(e) ||
@@ -40,6 +52,7 @@ export async function withOCCRetry<T>(fn: () => Promise<T>, maxAttempts = 5): Pr
           String(e?.message || e),
         )
       ) {
+        retries++;
         await new Promise((r) => setTimeout(r, 50 * 2 ** attempt + Math.random() * 30));
         continue;
       }

@@ -21,10 +21,22 @@ Full access-pattern → key-design map in `docs/ACCESS_PATTERNS.md`.
 AI agents increasingly act on our behalf — claiming bounties, drafting
 submissions, moving money — but there is no neutral, verifiable record of *what
 they did*. Logs are mutable, platforms don't share reputation, and 2026 is the
-year agent-trust becomes real — **ERC-8004** (Trustless Agents) and **ERC-8263**
-(Onchain Proof Layer) anchor agent actions on-chain (~50k gas/anchor, causal
-`parent_anchor_id` chains). There is no **off-chain, AWS-backed** equivalent —
-same commitment shape, no gas, strong consistency.
+year agent-trust becomes real:
+
+- **ERC-8004 (Trustless Agents)** — on-chain agent discovery + reputation +
+  validation registries (ERC-721 identity). A real Draft standard, authored by
+  Davide Crapis (`@ethereum.org`) with Google, Coinbase and MetaMask, created
+  2025-08-13.
+- **C2PA Content Credentials** — the open provenance/authenticity standard
+  (Linux Foundation, spec 2.3), whose steering committee is Adobe, Amazon, BBC,
+  Google, Meta, Microsoft, OpenAI, Sony and Truepic.
+
+Both standardise *provenance and trust for autonomous actors* — and both share
+one shape: **a tamper-evident chain of commitments anyone can recompute**. But
+on-chain agent identity is gas-priced and L1-latent, and app-layer audit logs
+are mutable and trust-the-application. There is no **off-chain, AWS-backed**
+attestation layer whose trust root is the database's own consistency model —
+cryptographic, recompute-verifiable, no gas.
 
 ## Solution
 AgentLedger turns every agent action into a **receipt** committed to a SHA-256
@@ -38,9 +50,14 @@ and verify it, and the moment a single receipt is mutated, `verify()` flags it
 - **Frontend:** Next.js 15 (App Router) + React 19 + Tailwind, UI scaffolded
   with **Vercel v0** (prompts + boundary in `docs/v0-workflow.md`).
 - **Backend:** Next.js route handlers → **Amazon Aurora DSQL** via
-  `@aws/aurora-dsql-node-postgres-connector` (IAM auth, no stored keys).
+  `@aws/aurora-dsql-node-postgres-connector` (IAM auth, no stored keys; production
+  path is the **Vercel Marketplace OIDC role** — keyless, the most-secure option
+  called out in the H0 resources).
   - `POST /api/receipt` — append an agent action (OCC retry on conflict).
   - `GET /api/verify` — recompute the chain, report the first tampered receipt.
+  - `GET /api/receipt/[id]` — **public, read-only** verification of one receipt by
+    `receipt_id` (recompute its hash, check prev/next chain links) — the endpoint a
+    judge or auditor hits to prove a single agent action is authentic. UI at `/verify`.
   - `GET /api/receipts` — the full chain in order.
   - `POST /api/tamper` — DEMO: mutate a receipt without rehashing.
   - `POST /api/seed` — seed 3 agent personas × 10 real scraped bounties.
@@ -51,25 +68,31 @@ and verify it, and the moment a single receipt is mutated, `verify()` flags it
   new tail. No app-level lock, no fork. The "Stress: 5 concurrent" button proves
   it: five parallel appends all land, sequential, no gaps.
 
-## Why now — the ERC-8263 parallel (originality)
-ERC-8263 ("Onchain Proof Layer for AI Agents", Draft) defines a minimal on-chain
-registry: `anchor(contentHash, metadataHash, agent, sig)` → `anchorId`; `verify()`
-is one read; causal chains via `parent_anchor_id`; ~50k gas/anchor. AgentLedger is
-the **off-chain AWS-backed equivalent** — same commitment shape, different trust
-substrate:
+## Originality — the DB consistency model *is* the trust protocol
+The 2026 agent-trust standards (ERC-8004 on-chain, C2PA for content) share one
+shape: a **tamper-evident chain of commitments anyone can recompute**.
+AgentLedger applies that shape **off-chain on an AWS database**, where the
+*database's consistency model* — not the application — is the trust root.
 
-| | ERC-8263 (on-chain) | AgentLedger (Aurora DSQL) |
+This is the deliberate difference from an **app-layer agent audit log** (the
+pattern most "agent observability" tools, including H0 entries, settle for):
+
+| | App-layer audit log | AgentLedger (DB-layer attestation) |
 |---|---|---|
-| Commitment | `contentHash`+`metadataHash`+agent sig | `input_hash`+`output_hash`+`agent_id` |
-| Causal link | `parent_anchor_id` | `prev_hash` (`UNIQUE` ⇒ no fork) |
-| Verify | `verify(anchorId)` view call | `GET /api/verify` recompute chain |
-| Concurrency | chain-serialised (1 tx wins) | OCC: loser retries `40001` |
-| Cost | ~50k gas/anchor | 100k+ free DPUs/mo (DSQL free tier) |
+| Trust root | the application (trust it not to lie/edit a row) | the DB consistency model + hash math |
+| Tamper-evidence | none — audit rows are mutable in place | cryptographic — mutate ⇒ chain breaks **and** localises the exact receipt |
+| Verifiable by | the app's own dashboard | anyone — recompute the chain, read-only |
+| Concurrency | app-level lock / queue | DSQL OCC: `UNIQUE(prev_hash)` ⇒ loser retries `40001` |
+| Consistency guarantee | whatever the app enforces | strong snapshot isolation, always |
+| Scale of trust | single app, single region | DSQL multi-region active-active ⇒ one logical, globally-consistent ledger |
 
-The insight: the **same proof-layer primitive** Ethereum is standardising on-chain
-runs just as well — far cheaper — on an AWS DB with the right consistency model.
-ERC-8263 picks on-chain for decentralised trust; AgentLedger picks DSQL for
-enterprise/agent-platform trust (verifiable, no gas, no L1 latency, strong reads).
+**The insight:** the same proof-layer primitive the industry is standardising for
+content (C2PA) and for on-chain agents (ERC-8004) runs on an AWS database with the
+right consistency model — no gas, no L1 latency, strong consistent reads from any
+endpoint, and a multi-region active-active path to a *globally*-consistent ledger.
+ERC-8004 chooses on-chain for decentralised trust; AgentLedger chooses Aurora DSQL
+for enterprise / agent-platform trust. Nobody on H0 is building the **off-chain,
+DB-consistency-rooted** side of the agent-trust stack.
 
 ## Architecture diagram
 `docs/architecture.svg` — v0/Next.js on Vercel → API routes → Aurora DSQL
@@ -90,6 +113,9 @@ Generated from **live AWS API calls** (`npm run aws:proof`, `scripts/aws-proof.m
 
 ## Try it
 - **Live app:** https://agentledger-psi.vercel.app
+- **Public verify (try this):** https://agentledger-psi.vercel.app/verify — paste any
+  `receipt_id` (or click any chain block on the dashboard) to see the receipt's hash
+  recomputed and its prev/next links checked, read-only.
 - **Repo:** https://github.com/yusizer/agentledger
 - Local: `npm install && npm run dsql:schema && npm run dev` (needs a DSQL
   cluster — `node scripts/dsql-create.mjs`).
@@ -106,7 +132,8 @@ operates), so it's not a toy.
 - Verify a receipt's `input_hash`/`output_hash` against an external payload
   (prove a stored document matches the chain without trusting the bytes).
 - Multi-region DSQL active-active for a globally-consistent ledger.
-- Agent identity (signed receipts) + a public verify endpoint.
+- Agent identity (signed receipts, EIP-712) — so a receipt proves *which agent*
+  signed it, not just that it is in the chain.
 
 ## Vercel
 - Project link: https://agentledger-psi.vercel.app

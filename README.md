@@ -9,11 +9,15 @@ the chain and verify it — or, the moment a single receipt is mutated, detect
 > Problem: AI agents increasingly act on our behalf — claiming bounties,
 > drafting submissions, moving money — but there is no neutral, verifiable
 > record of *what they did*. Logs are mutable, platforms don't share reputation,
-> and 2026 is the year agent-trust becomes real — **ERC-8004** (Trustless Agents)
-> and **ERC-8263** (Onchain Proof Layer) put agent attestation on-chain. AgentLedger
-> is the **off-chain, AWS-backed** equivalent: the same commitment shape (content
-> + output hashes, agent identity, a causal `prev_hash` link) but on Aurora DSQL
-> with OCC — no gas, strong consistency, 100k+ anchors free on the DSQL free tier.
+> and 2026 is the year agent-trust becomes real: **ERC-8004** (Trustless Agents —
+> on-chain agent discovery + reputation + validation, authored by Davide Crapis
+> @ethereum.org with Google, Coinbase, MetaMask) and **C2PA Content Credentials**
+> (the open provenance standard, Linux Foundation, backed by Adobe / Google /
+> Microsoft / OpenAI / Meta / Amazon) both standardise *a tamper-evident chain of
+> commitments anyone can recompute*. AgentLedger is the **off-chain, AWS-backed**
+> equivalent: the same commitment shape (input + output hashes, agent identity, a
+> causal `prev_hash` link) on Aurora DSQL with OCC — no gas, strong consistency,
+> and a multi-region active-active path to a globally-consistent ledger.
 > Append-only, tamper-evident by construction.
 
 ## Why Aurora DSQL (the deliberate choice)
@@ -31,37 +35,48 @@ This is the insight the H0 judges (AWS DB specialists) score on:
 - **Strong, consistent reads from any endpoint** mean `verify()` recomputes the
   chain and always sees the committed history — no eventual-consistency gap
   where a tamper could hide.
+- **Multi-region active-active** — a DSQL peered cluster exposes two Regional
+  endpoints as one logical database with concurrent read/write and strong data
+  consistency. The same `UNIQUE(prev_hash)` that keeps a single-Region chain
+  linear keeps a multi-Region chain linear — agents in `us-east-1` and `eu-west-1`
+  appending to one logical chain cannot fork it. That is the off-chain equivalent
+  of what ERC-8004 gets from L1 consensus, without gas or L1 latency. (Demo runs
+  single-Region; multi-region is the documented production path.)
 
 A DynamoDB conditional write gives OCC on one item; DSQL gives multi-row,
 lock-free, strongly-consistent OCC across the whole chain — the "only-DSQL-can-
 do-this" demo.
 
-## Why now: the ERC-8263 parallel (the originality axis)
+## Originality — the DB consistency model *is* the trust protocol
 
-ERC-8263 ("Onchain Proof Layer for AI Agents", Draft) defines a minimal on-chain
-registry: `anchor(contentHash, metadataHash, agent, sig)` returns an `anchorId`,
-and `verify(anchorId)` is one read. It stores only hashes (~50k gas/anchor), uses
-EIP-712 signatures so relayers pay gas, and links causal chains via
-`parent_anchor_id`. Agent identity is delegated to ERC-8004 ("Trustless Agents").
+The 2026 agent-trust standards share one shape: a **tamper-evident chain of
+commitments anyone can recompute**. **ERC-8004 (Trustless Agents)** puts agent
+discovery + reputation + validation in on-chain registries (ERC-721 identity) —
+a real Draft, authored by Davide Crapis (`@ethereum.org`) with Google, Coinbase
+and MetaMask, created 2025-08-13. **C2PA Content Credentials** is the open
+provenance/authenticity standard (Linux Foundation, spec 2.3, steering committee
+Adobe / Amazon / BBC / Google / Meta / Microsoft / OpenAI / Sony / Truepic).
 
-AgentLedger is the **off-chain, AWS-backed equivalent** — same commitment shape,
-different trust substrate:
+AgentLedger applies that same shape **off-chain on an AWS database**, where the
+*database's consistency model* — not the application — is the trust root. That is
+the deliberate difference from an **app-layer agent audit log** (the pattern most
+"agent observability" tools settle for, including H0 entries):
 
-| | ERC-8263 (on-chain) | AgentLedger (off-chain, AWS) |
+| | App-layer audit log | AgentLedger (DB-layer attestation) |
 |---|---|---|
-| Commitment | `contentHash` + `metadataHash` + agent sig | `input_hash` + `output_hash` + `agent_id` |
-| Causal link | `parent_anchor_id` | `prev_hash` (`UNIQUE` ⇒ no fork) |
-| Verify | `verify(anchorId)` view call | `GET /api/verify` recompute chain |
-| Concurrency | serialised by the chain (1 tx wins) | OCC: `UNIQUE(prev_hash)` ⇒ loser retries `40001` |
-| Cost | ~50k gas / anchor | 100k+ free DPUs/mo on the DSQL free tier |
-| Trust root | L1/L2 consensus + EIP-712 sigs | DSQL snapshot isolation + hash-chain tamper-evidence |
+| Trust root | the application (trust it not to lie/edit a row) | the DB consistency model + hash math |
+| Tamper-evidence | none — audit rows are mutable in place | cryptographic — mutate ⇒ chain breaks **and** localises the exact receipt |
+| Verifiable by | the app's own dashboard | anyone — recompute the chain, read-only |
+| Concurrency | app-level lock / queue | DSQL OCC: `UNIQUE(prev_hash)` ⇒ loser retries `40001` |
+| Consistency | whatever the app enforces | strong snapshot isolation, always |
+| Scale of trust | single app, single region | DSQL multi-region active-active ⇒ one logical, globally-consistent ledger |
 
-The insight for H0: the **same proof-layer primitive** Ethereum is standardising
-on-chain runs just as well — and far cheaper — on an AWS database with the right
-consistency model. ERC-8263 chooses on-chain for decentralised trust; AgentLedger
-chooses DSQL for enterprise / agent-platform trust (verifiable, but no gas, no L1
-latency, strong consistent reads from any endpoint). Nobody on H0 is building the
-off-chain side of the agent-trust stack.
+The insight for H0: the **same proof-layer primitive** the industry is
+standardising for content (C2PA) and for on-chain agents (ERC-8004) runs on an
+AWS database with the right consistency model — no gas, no L1 latency, strong
+consistent reads from any endpoint, and a multi-region active-active path to a
+*globally*-consistent ledger. ERC-8004 chooses on-chain for decentralised trust;
+AgentLedger chooses DSQL for enterprise / agent-platform trust.
 
 ## Stack
 - **Frontend:** Next.js 15 (App Router) + React 19 + Tailwind. UI scaffolded with **v0**.
@@ -189,10 +204,12 @@ npm run build    # production build
   - **Design** → dark dashboard, live chain visualization, green/red verify
     banner, tamper animation, OCC stress test.
   - **Impact & Real-world Applicability** → agent-trust is a 2026 problem
-    (ERC-8004/8263, agent reputation); off-chain AWS attestation layer; works
+    (ERC-8004, C2PA, agent reputation); off-chain AWS attestation layer; works
     on real bounty data (the hunter radar we already run).
-  - **Originality** → "DB consistency model = trust protocol" — nobody on H0 is
-    building agent attestation; tamper-evident hash-chain on DSQL is the insight.
+  - **Originality** → "DB consistency model = trust protocol." Other H0 agent
+    entries settle for an app-layer audit log; AgentLedger roots trust in the DB
+    consistency model + a cryptographic, recompute-verifiable hash-chain — the
+    off-chain, AWS-native side of the stack ERC-8004/C2PA are standardising.
 
 ## Project layout
 ```
