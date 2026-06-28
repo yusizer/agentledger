@@ -1,44 +1,45 @@
 # How v0 was used
 
 H0 asks that the frontend be scaffolded with **Vercel v0**. This records the
-actual prompts and the boundary between v0-generated UI and hand-written data
-layer (judges can tell when the split is papered over).
+actual prompts and the boundary between v0-generated UI and the hand-written
+data layer (judges can tell when the split is papered over).
 
 ## Prompts (paraphrased)
 
-1. **Layout pass** — “A dark dashboard for tracking Web3 bounties and
-   hackathons. Header with product name, a row of KPI cards, a filter bar
-   (selects + search), and a responsive 3-column grid of listing cards. Tailwind,
-   indigo accent, slate panels, rounded-lg, tight spacing.”
-2. **Card component** — “A bounty card: platform badge + type, deadline
-   countdown chip, two-line title, skill tags, prize, and a save/bookmark button.
-   Hover: accent border.”
-3. **Countdown chip** — “A small deadline countdown: emerald > 7 days, amber
-   ≤ 7, red ≤ 2 with a pulse. Updates every minute.”
+1. **Layout pass** — "A dark dashboard for an AI-agent attestation ledger.
+   Header with product name + a live 'chain intact / tampered' badge, a row of
+   four KPI cards (receipts, agents, chain verify, verified blocks), a big
+   green/red verify banner, a left controls panel and a right chain view.
+   Tailwind, indigo accent, slate panels, rounded-lg."
+2. **Receipt block (chain)** — "A chain block: #seq, agent badge, action, target,
+   a short hash and a short 'prev' hash in monospace. Healthy blocks have an
+   emerald seq; tampered blocks get a rose border + '⚠ TAMPERED'. Blocks are
+   visually linked top-to-bottom."
+3. **Verify banner + controls** — "A banner that is emerald when the chain
+   verifies and rose when tampered, with a re-verify button. Controls: re-seed,
+   a tamper input + button (rose), an append form (agent/action/target selects
+   + emerald append button), and an amber 'stress: 5 concurrent (OCC)' button."
 
-v0 produced the dashboard shell, the card, and the chip markup/Tailwind classes.
-That output was dropped into `app/page.tsx`, `components/BountyCard.tsx`, and
-`components/Countdown.tsx`, then iterated by hand.
+v0 produced the dashboard shell, the chain block, and the control panel
+markup/Tailwind. That output was dropped into `app/page.tsx` and
+`components/ChainViz.tsx`, then iterated by hand.
 
 ## Where the hand-written work starts (the data layer)
 
-Everything below the UI is hand-written — this is the part H0 scores on
-*Technological Implementation*:
+Everything below the UI is hand-written — the part H0 scores on *Technological
+Implementation*:
 
-- `app/api/{bounties,save,saves,seed,stats}/route.ts` — Next.js route handlers.
-- `lib/dynamodb.ts` — AWS SDK v3, two tables + two GSIs, conditional writes,
-  pagination, Query-vs-Scan access-pattern mapping (see `ACCESS_PATTERNS.md`).
-- `scripts/build_seed.py` — normalizes real scraped listings into the seed.
-- `scripts/seed.ts` — `BatchWriteItem` loader with `UnprocessedItems` retry.
-- Hero KPI aggregation, filter logic, keyboard shortcuts, skeleton/empty/error
-  states.
+- `app/api/{receipt,receipts,verify,tamper,seed,agents}/route.ts` — route handlers.
+- `lib/db.ts` — Aurora DSQL pool (IAM auth) + `withOCCRetry`.
+- `lib/ledger.ts` — `appendReceipt` / `verifyChain` / `tamperReceipt` (the
+  hash-chain + OCC append loop).
+- `lib/crypto.ts` — SHA-256 hash-chain.
+- `scripts/dsql-{create,schema,test}.mjs` — DSQL cluster, schema, hash-chain proof.
 
 ## Proof artifacts
-
-- The v0 chat history / generation preview (keep a screenshot for the demo
-  video, ~5s segment).
-- v0 → “Sync to GitHub” / project link (paste in README if used).
+- The v0 chat history / generation preview (keep a screenshot for the ~5s video
+  segment).
 - Git history shows v0-generated UI commits followed by the data-layer commits.
 
-> Honest framing for the video: *“v0 scaffolded the dashboard UI; I wrote the
-> DynamoDB data model and API layer behind it.”*
+> Honest framing for the video: *"v0 scaffolded the dashboard UI; I wrote the
+> Aurora DSQL data model, the hash-chain, and the OCC append loop behind it."*

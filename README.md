@@ -139,7 +139,7 @@ npm run build    # production build
 
 ## H0 submission checklist
 - [x] Public GitHub repo (this) + LICENSE + architecture
-- [ ] Deployed Vercel project link + Team ID
+- [x] Deployed Vercel: https://agentledger-psi.vercel.app · Team ID `team_Znk3yYItc5FxiJBF2rbqKVON`
 - [ ] Demo video <3 min (YouTube, public) — `docs/DEMO.md`
 - [x] Architecture diagram — `docs/architecture.svg`
 - [x] Data model / access-pattern doc — `docs/ACCESS_PATTERNS.md`

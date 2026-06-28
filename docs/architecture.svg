@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#0a0f1c"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b7cff"/>
+    </marker>
+    <style>
+      .box { fill:#121a30; stroke:#2a3a63; stroke-width:1.5; }
+      .tier { fill:#0f1730; stroke:#26345c; stroke-width:1.2; }
+      .h { fill:#e8ecff; font-size:17px; font-weight:700; }
+      .sub { fill:#9aa6cc; font-size:12px; }
+      .tag { fill:#6b7cff; font-size:11px; font-weight:600; }
+      .lbl { fill:#b9c2e6; font-size:12px; }
+      .mono { fill:#7fd6b0; font-size:11px; font-family: ui-monospace, monospace; }
+      .flow { stroke:#6b7cff; stroke-width:2; fill:none; marker-end:url(#arrow); }
+      .flow2 { stroke:#f0a94b; stroke-width:2; fill:none; marker-end:url(#arrow); }
+      .title { fill:#e8ecff; font-size:22px; font-weight:800; }
+      .cap { fill:#6b7cff; font-size:13px; font-weight:700; letter-spacing:1px; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="620" fill="url(#bg)"/>
+  <text x="40" y="48" class="cap">ARCHITECTURE</text>
+  <text x="40" y="74" class="title">AgentLedger — H0: Hack the Zero Stack</text>
+
+  <!-- Client -->
+  <rect class="box" x="40" y="110" width="920" height="80"/>
+  <text x="60" y="135" class="tag">CLIENT — Vercel v0 / Next.js 15 App Router + React 19 + Tailwind</text>
+  <rect class="tier" x="60" y="148" width="300" height="34"/><text x="210" y="170" class="lbl" text-anchor="middle">Dashboard (page.tsx) — chain viz + verify + controls</text>
+  <rect class="tier" x="380" y="148" width="240" height="34"/><text x="500" y="170" class="lbl" text-anchor="middle">ChainViz (hash blocks, ok/broken)</text>
+  <rect class="tier" x="640" y="148" width="300" height="34"/><text x="790" y="170" class="lbl" text-anchor="middle">Verify banner · Append · Tamper · Stress (OCC)</text>
+
+  <!-- API -->
+  <rect class="box" x="40" y="216" width="920" height="120"/>
+  <text x="60" y="241" class="tag">SERVER — Next.js API Routes (Vercel serverless) · lib/ledger.ts</text>
+  <rect class="tier" x="60" y="254" width="170" height="66"/><text x="145" y="280" class="h" text-anchor="middle">POST</text><text x="145" y="300" class="sub" text-anchor="middle">/api/receipt</text><text x="145" y="314" class="mono" text-anchor="middle">append (OCC retry)</text>
+  <rect class="tier" x="246" y="254" width="170" height="66"/><text x="331" y="280" class="h" text-anchor="middle">GET</text><text x="331" y="300" class="sub" text-anchor="middle">/api/verify</text><text x="331" y="314" class="mono" text-anchor="middle">recompute + detect</text>
+  <rect class="tier" x="432" y="254" width="170" height="66"/><text x="517" y="280" class="h" text-anchor="middle">GET</text><text x="517" y="300" class="sub" text-anchor="middle">/api/receipts</text><text x="517" y="314" class="mono" text-anchor="middle">ORDER BY seq</text>
+  <rect class="tier" x="618" y="254" width="170" height="66"/><text x="703" y="280" class="h" text-anchor="middle">POST</text><text x="703" y="300" class="sub" text-anchor="middle">/api/tamper</text><text x="703" y="314" class="mono" text-anchor="middle">demo: mutate</text>
+  <rect class="tier" x="804" y="254" width="136" height="66"/><text x="872" y="280" class="h" text-anchor="middle">POST</text><text x="872" y="300" class="sub" text-anchor="middle">/api/seed</text><text x="872" y="314" class="mono" text-anchor="middle">3 agents×10</text>
+
+  <!-- DSQL -->
+  <rect class="box" x="40" y="360" width="920" height="170"/>
+  <text x="60" y="385" class="tag">DATA — Amazon Aurora DSQL · Postgres-compatible · OCC + strong snapshot isolation · IAM auth (no stored keys)</text>
+  <rect class="tier" x="60" y="398" width="560" height="120"/>
+  <text x="80" y="422" class="h">receipts</text>
+  <text x="80" y="442" class="sub">seq BIGINT PK · prev_hash UNIQUE · receipt_hash UNIQUE · receipt_id UNIQUE</text>
+  <text x="80" y="460" class="sub">agent_id · action · target · input_hash · output_hash · payload · ts</text>
+  <text x="80" y="486" class="mono">receipt_hash = SHA-256(prev_hash ‖ agent ‖ action ‖ target ‖ input_hash ‖ output_hash ‖ ts)</text>
+  <text x="80" y="506" class="mono">prev_hash(n) = receipt_hash(n-1)   ← UNIQUE(prev_hash) ⇒ no fork under concurrent appends</text>
+
+  <rect class="tier" x="640" y="398" width="300" height="120"/>
+  <text x="660" y="422" class="h">OCC append loop</text>
+  <text x="660" y="442" class="mono">tail = SELECT … ORDER BY seq DESC</text>
+  <text x="660" y="460" class="mono">INSERT (seq=tail+1, prev_hash, …)</text>
+  <text x="660" y="478" class="mono">on 40001 / duplicate-key: retry</text>
+  <text x="660" y="500" class="sub">⇒ 5 concurrent → all land, no gaps</text>
+
+  <!-- flows -->
+  <path class="flow" d="M210,184 L145,254"/>
+  <path class="flow" d="M500,184 L331,254"/>
+  <path class="flow" d="M790,184 L703,254"/>
+  <path class="flow" d="M145,322 L145,398"/>
+  <path class="flow" d="M331,322 L331,398"/>
+  <path class="flow2" d="M703,322 L703,398"/>
+</svg>
