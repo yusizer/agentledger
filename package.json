@@ -1,0 +1,35 @@
+{
+  "name": "agentledger",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AgentLedger — tamper-evident attestation ledger for AI agents on Amazon Aurora DSQL (OCC + hash-chain). Built for H0: Hack the Zero Stack (Vercel v0 + AWS DSQL).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "dsql:schema": "node scripts/dsql-schema.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dsql": "^3.1075.0",
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0",
+    "@aws/aurora-dsql-node-postgres-connector": "^0.1.9",
+    "next": "^15.5.19",
+    "pg": "^8.22.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
