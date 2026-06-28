@@ -125,3 +125,110 @@ export async function tamperReceipt(seq: number): Promise<{ updated: number }> {
   );
   return { updated: r?.rowCount ?? 0 };
 }
+
+/** Fetch a single receipt by its stable receipt_id (for public verification). */
+export async function getReceiptByReceiptId(receiptId: string): Promise<Receipt | null> {
+  const rows = await query<any>(
+    "SELECT seq, receipt_id, agent_id, action, target, input_hash, output_hash, prev_hash, receipt_hash, payload, ts FROM receipts WHERE receipt_id = $1 LIMIT 1",
+    [receiptId],
+  );
+  if (!rows.length) return null;
+  const r = rows[0];
+  return {
+    seq: Number(r.seq),
+    receipt_id: r.receipt_id,
+    agent_id: r.agent_id,
+    action: r.action,
+    target: r.target,
+    input_hash: r.input_hash,
+    output_hash: r.output_hash,
+    prev_hash: r.prev_hash,
+    receipt_hash: r.receipt_hash,
+    payload: r.payload ? (typeof r.payload === "string" ? JSON.parse(r.payload) : r.payload) : null,
+    ts: Number(r.ts),
+  } as Receipt;
+}
+
+export interface ReceiptLink {
+  seq: number;
+  receipt_id: string;
+  hash: string;
+}
+
+export interface SingleVerify {
+  receipt: Receipt | null;
+  expected_hash: string | null;
+  /** recomputed hash === stored receipt_hash */
+  hash_ok: boolean;
+  /** this.prev_hash === previous receipt.receipt_hash (or genesis for seq 1) */
+  prev_link_ok: boolean;
+  /** next receipt.prev_hash === this.receipt_hash (vacuously true at the tail) */
+  next_link_ok: boolean;
+  prev: ReceiptLink | null;
+  next: ReceiptLink | null;
+  /** hash_ok && prev_link_ok && next_link_ok */
+  ok: boolean;
+}
+
+/**
+ * Public verification of a single receipt by receipt_id — the "verify one
+ * receipt" endpoint a third party (judge, auditor) would hit. Recomputes the
+ * receipt hash from its stored fields, checks the prev_hash link against the
+ * previous receipt, and checks the next receipt points back at this one. Read-only.
+ */
+export async function verifyReceiptById(receiptId: string): Promise<SingleVerify> {
+  const receipt = await getReceiptByReceiptId(receiptId);
+  if (!receipt) {
+    return {
+      receipt: null, expected_hash: null, hash_ok: false, prev_link_ok: false,
+      next_link_ok: false, prev: null, next: null, ok: false,
+    };
+  }
+  const expected = receiptHash({
+    prevHash: receipt.prev_hash,
+    agentId: receipt.agent_id,
+    action: receipt.action,
+    target: receipt.target,
+    inputHash: receipt.input_hash,
+    outputHash: receipt.output_hash,
+    ts: receipt.ts,
+  });
+  const hash_ok = expected === receipt.receipt_hash;
+
+  // previous receipt (seq - 1); seq 1 must link to genesis
+  let prev: ReceiptLink | null = null;
+  let prev_link_ok: boolean;
+  if (receipt.seq === 1) {
+    prev_link_ok = receipt.prev_hash === GENESIS_HASH;
+  } else {
+    const prevRows = await query<{ seq: number; receipt_id: string; receipt_hash: string }>(
+      "SELECT seq, receipt_id, receipt_hash FROM receipts WHERE seq = $1 LIMIT 1",
+      [receipt.seq - 1],
+    );
+    if (prevRows.length) {
+      prev = { seq: Number(prevRows[0].seq), receipt_id: prevRows[0].receipt_id, hash: prevRows[0].receipt_hash };
+      prev_link_ok = receipt.prev_hash === prevRows[0].receipt_hash;
+    } else {
+      prev_link_ok = false; // gap — previous receipt missing
+    }
+  }
+
+  // next receipt (seq + 1); the tail has no next, which is fine
+  const nextRows = await query<{ seq: number; receipt_id: string; prev_hash: string }>(
+    "SELECT seq, receipt_id, prev_hash FROM receipts WHERE seq = $1 LIMIT 1",
+    [receipt.seq + 1],
+  );
+  let next: ReceiptLink | null = null;
+  let next_link_ok: boolean;
+  if (nextRows.length) {
+    next = { seq: Number(nextRows[0].seq), receipt_id: nextRows[0].receipt_id, hash: nextRows[0].prev_hash };
+    next_link_ok = nextRows[0].prev_hash === receipt.receipt_hash;
+  } else {
+    next_link_ok = true; // tail — no successor, link vacuously ok
+  }
+
+  return {
+    receipt, expected_hash: expected, hash_ok, prev_link_ok, next_link_ok,
+    prev, next, ok: hash_ok && prev_link_ok && next_link_ok,
+  };
+}

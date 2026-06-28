@@ -21,9 +21,10 @@ Full access-pattern → key-design map in `docs/ACCESS_PATTERNS.md`.
 AI agents increasingly act on our behalf — claiming bounties, drafting
 submissions, moving money — but there is no neutral, verifiable record of *what
 they did*. Logs are mutable, platforms don't share reputation, and 2026 is the
-year agent-trust becomes real (ERC-8004/8263, agent-reputation protocols) —
-almost all of it on-chain. There is no **off-chain, AWS-backed** attestation
-layer.
+year agent-trust becomes real — **ERC-8004** (Trustless Agents) and **ERC-8263**
+(Onchain Proof Layer) anchor agent actions on-chain (~50k gas/anchor, causal
+`parent_anchor_id` chains). There is no **off-chain, AWS-backed** equivalent —
+same commitment shape, no gas, strong consistency.
 
 ## Solution
 AgentLedger turns every agent action into a **receipt** committed to a SHA-256
@@ -50,15 +51,42 @@ and verify it, and the moment a single receipt is mutated, `verify()` flags it
   new tail. No app-level lock, no fork. The "Stress: 5 concurrent" button proves
   it: five parallel appends all land, sequential, no gaps.
 
+## Why now — the ERC-8263 parallel (originality)
+ERC-8263 ("Onchain Proof Layer for AI Agents", Draft) defines a minimal on-chain
+registry: `anchor(contentHash, metadataHash, agent, sig)` → `anchorId`; `verify()`
+is one read; causal chains via `parent_anchor_id`; ~50k gas/anchor. AgentLedger is
+the **off-chain AWS-backed equivalent** — same commitment shape, different trust
+substrate:
+
+| | ERC-8263 (on-chain) | AgentLedger (Aurora DSQL) |
+|---|---|---|
+| Commitment | `contentHash`+`metadataHash`+agent sig | `input_hash`+`output_hash`+`agent_id` |
+| Causal link | `parent_anchor_id` | `prev_hash` (`UNIQUE` ⇒ no fork) |
+| Verify | `verify(anchorId)` view call | `GET /api/verify` recompute chain |
+| Concurrency | chain-serialised (1 tx wins) | OCC: loser retries `40001` |
+| Cost | ~50k gas/anchor | 100k+ free DPUs/mo (DSQL free tier) |
+
+The insight: the **same proof-layer primitive** Ethereum is standardising on-chain
+runs just as well — far cheaper — on an AWS DB with the right consistency model.
+ERC-8263 picks on-chain for decentralised trust; AgentLedger picks DSQL for
+enterprise/agent-platform trust (verifiable, no gas, no L1 latency, strong reads).
+
 ## Architecture diagram
 `docs/architecture.svg` — v0/Next.js on Vercel → API routes → Aurora DSQL
 `receipts` (hash-chain + OCC append loop), with read/write paths labelled.
 
 ## AWS usage proof *(screenshot)*
-- Vercel Storage Configuration showing the Aurora DSQL integration, **and/or**
-- AWS Console → Aurora DSQL → `receipts` table items (the real hash-chain rows),
-- (strongest) CloudWatch DSQL metrics showing commit/transaction activity during
-  the demo.
+Generated from **live AWS API calls** (`npm run aws:proof`, `scripts/aws-proof.mjs`):
+- **`docs/aws-proof.svg`** — CloudWatch metrics for the cluster (`TotalTransactions`,
+  `WriteDPU`, `CommitLatency`, `BytesWritten`, `ReadDPU`, `ComputeDPU`…) +
+  control-plane `GetCluster` metadata (status **ACTIVE**, ARN, region, endpoint) —
+  real datapoints, last 24h. This is the strongest proof: real commit/transaction
+  activity on Aurora DSQL.
+- **`docs/aws-proof-receipts.svg`** — the actual `receipts` hash-chain rows read
+  from DSQL (seq, agent, action, target, prev_hash, receipt_hash) — 30 rows,
+  proving the table and the chain exist on Aurora DSQL.
+- *(Also acceptable per rules: AWS Console → Aurora DSQL cluster + `receipts`
+  items, or Vercel Storage Configuration.)*
 
 ## Try it
 - **Live app:** https://agentledger-psi.vercel.app

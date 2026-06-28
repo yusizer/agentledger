@@ -117,6 +117,9 @@ export default function Home() {
             <span className={`h-1.5 w-1.5 rounded-full ${chainOk ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
             {chainOk ? "chain intact" : "tampered"}
           </span>
+          <a href="/verify" className="text-[11px] text-brand border border-brand/40 rounded-full px-2.5 py-1 hover:bg-brand/10">
+            public verify ↗
+          </a>
         </div>
         <p className="text-sm text-slate-400 mt-1">
           Tamper-evident attestation ledger for AI agents — every action signed into a hash-chain on

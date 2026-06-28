@@ -21,8 +21,9 @@ export function ChainViz({
         return (
           <div key={r.seq}>
             {i > 0 && <div className="ml-4 h-2.5 w-0.5 bg-slate-700" />}
-            <div
-              className={`panel rounded-lg p-2.5 flex flex-wrap items-center gap-2 text-sm transition-colors ${
+            <a
+              href={`/verify?id=${r.receipt_id}`}
+              className={`panel rounded-lg p-2.5 flex flex-wrap items-center gap-2 text-sm transition-colors hover:border-brand/60 ${
                 ok ? "" : "border-rose-500/60 bg-rose-500/5"
               }`}
             >
@@ -39,7 +40,7 @@ export function ChainViz({
               {verify && !ok && (
                 <span className="text-[10px] text-rose-400 font-bold ml-1">⚠ TAMPERED</span>
               )}
-            </div>
+            </a>
           </div>
         );
       })}

@@ -19,8 +19,9 @@ I created this piece of content for the purposes of entering this hackathon.
 AI agents increasingly act on our behalf — claiming bounties, drafting
 submissions — but there's no neutral, verifiable record of what they did. Logs
 are mutable; platforms don't share reputation; and almost all of the 2026
-agent-trust work (ERC-8004/8263, agent reputation) is on-chain. I wanted an
-**off-chain, AWS-backed** attestation layer.
+agent-trust work is going on-chain — ERC-8004 (Trustless Agents) and ERC-8263
+(Onchain Proof Layer) anchor agent actions on-chain at ~50k gas each. I wanted an
+**off-chain, AWS-backed** equivalent — same commitment shape, no gas.
 
 So for **H0: Hack the Zero Stack** I built **AgentLedger**: every agent action
 is signed into a SHA-256 hash-chain on **Amazon Aurora DSQL**. Each receipt

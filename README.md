@@ -9,10 +9,12 @@ the chain and verify it — or, the moment a single receipt is mutated, detect
 > Problem: AI agents increasingly act on our behalf — claiming bounties,
 > drafting submissions, moving money — but there is no neutral, verifiable
 > record of *what they did*. Logs are mutable, platforms don't share reputation,
-> and 2026 is the year agent-trust becomes real (ERC-8004/8263, agent reputation
-> protocols) — almost all of it on-chain. AgentLedger is the **off-chain,
-> AWS-backed** attestation layer: append-only, OCC-serial, tamper-evident by
-> construction.
+> and 2026 is the year agent-trust becomes real — **ERC-8004** (Trustless Agents)
+> and **ERC-8263** (Onchain Proof Layer) put agent attestation on-chain. AgentLedger
+> is the **off-chain, AWS-backed** equivalent: the same commitment shape (content
+> + output hashes, agent identity, a causal `prev_hash` link) but on Aurora DSQL
+> with OCC — no gas, strong consistency, 100k+ anchors free on the DSQL free tier.
+> Append-only, tamper-evident by construction.
 
 ## Why Aurora DSQL (the deliberate choice)
 
@@ -21,11 +23,11 @@ This is the insight the H0 judges (AWS DB specialists) score on:
 - **Append-only, low-contention writes are the ideal OCC workload** — exactly
   what AWS recommends for DSQL. Each receipt is an `INSERT` (never an in-place
   `UPDATE` of a hot row), so distributed OCC commits without lock contention.
-- **Serializable snapshot isolation + OCC** keeps the chain linear under
-  concurrent appends: two agents that read the same tail both try to `INSERT`
-  with the same `prev_hash`; the `UNIQUE(prev_hash)` constraint turns the loser
-  into a retryable `40001` (OC000) — the app re-reads the new tail and retries.
-  **The database's consistency model *is* the coordination protocol.**
+- **Snapshot isolation + OCC** (PostgreSQL Repeatable Read equivalent) keeps the
+  chain linear under concurrent appends: two agents that read the same tail both
+  try to `INSERT` with the same `prev_hash`; the `UNIQUE(prev_hash)` constraint
+  turns the loser into a retryable `40001` (OC000) — the app re-reads the new tail
+  and retries. **The database's consistency model *is* the coordination protocol.**
 - **Strong, consistent reads from any endpoint** mean `verify()` recomputes the
   chain and always sees the committed history — no eventual-consistency gap
   where a tamper could hide.
@@ -33,6 +35,33 @@ This is the insight the H0 judges (AWS DB specialists) score on:
 A DynamoDB conditional write gives OCC on one item; DSQL gives multi-row,
 lock-free, strongly-consistent OCC across the whole chain — the "only-DSQL-can-
 do-this" demo.
+
+## Why now: the ERC-8263 parallel (the originality axis)
+
+ERC-8263 ("Onchain Proof Layer for AI Agents", Draft) defines a minimal on-chain
+registry: `anchor(contentHash, metadataHash, agent, sig)` returns an `anchorId`,
+and `verify(anchorId)` is one read. It stores only hashes (~50k gas/anchor), uses
+EIP-712 signatures so relayers pay gas, and links causal chains via
+`parent_anchor_id`. Agent identity is delegated to ERC-8004 ("Trustless Agents").
+
+AgentLedger is the **off-chain, AWS-backed equivalent** — same commitment shape,
+different trust substrate:
+
+| | ERC-8263 (on-chain) | AgentLedger (off-chain, AWS) |
+|---|---|---|
+| Commitment | `contentHash` + `metadataHash` + agent sig | `input_hash` + `output_hash` + `agent_id` |
+| Causal link | `parent_anchor_id` | `prev_hash` (`UNIQUE` ⇒ no fork) |
+| Verify | `verify(anchorId)` view call | `GET /api/verify` recompute chain |
+| Concurrency | serialised by the chain (1 tx wins) | OCC: `UNIQUE(prev_hash)` ⇒ loser retries `40001` |
+| Cost | ~50k gas / anchor | 100k+ free DPUs/mo on the DSQL free tier |
+| Trust root | L1/L2 consensus + EIP-712 sigs | DSQL snapshot isolation + hash-chain tamper-evidence |
+
+The insight for H0: the **same proof-layer primitive** Ethereum is standardising
+on-chain runs just as well — and far cheaper — on an AWS database with the right
+consistency model. ERC-8263 chooses on-chain for decentralised trust; AgentLedger
+chooses DSQL for enterprise / agent-platform trust (verifiable, but no gas, no L1
+latency, strong consistent reads from any endpoint). Nobody on H0 is building the
+off-chain side of the agent-trust stack.
 
 ## Stack
 - **Frontend:** Next.js 15 (App Router) + React 19 + Tailwind. UI scaffolded with **v0**.
@@ -143,7 +172,9 @@ npm run build    # production build
 - [ ] Demo video <3 min (YouTube, public) — `docs/DEMO.md`
 - [x] Architecture diagram — `docs/architecture.svg`
 - [x] Data model / access-pattern doc — `docs/ACCESS_PATTERNS.md`
-- [ ] Screenshot proving AWS DSQL usage (Vercel Storage Config / AWS Console / CloudWatch)
+- [x] AWS-usage proof — `docs/aws-proof.svg` (CloudWatch metrics + cluster metadata) +
+      `docs/aws-proof-receipts.svg` (real hash-chain rows) — generated from live AWS
+      API calls via `npm run aws:proof` (see `scripts/aws-proof.mjs`)
 - [ ] Text description stating which AWS Database was used (**Aurora DSQL**)
 - [ ] Track: Open innovation (targets **Most Original** + **Best Technical Implementation**)
 - [ ] Bonus: 1–3 #H0Hackathon posts (+0.6 pts)
@@ -153,8 +184,8 @@ npm run build    # production build
   model = trust protocol).
 - **Judging mapped:**
   - **Tech Implementation (tiebreak)** → deliberate DSQL data model: append-only
-    OCC, `UNIQUE(prev_hash)` chain-linearity, serializable snapshot isolation,
-    retry on 40001, recompute-and-compare verify.
+    OCC, `UNIQUE(prev_hash)` chain-linearity, snapshot isolation (PG Repeatable
+    Read equiv), retry on 40001, recompute-and-compare verify.
   - **Design** → dark dashboard, live chain visualization, green/red verify
     banner, tamper animation, OCC stress test.
   - **Impact & Real-world Applicability** → agent-trust is a 2026 problem
