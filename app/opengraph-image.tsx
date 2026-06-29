@@ -37,13 +37,13 @@ export default function OG() {
           >
             A
           </div>
-          <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>
+          <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5, display: "flex" }}>
             Agent<span style={{ color: "#6366f1" }}>Ledger</span>
           </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 64, fontWeight: 800, lineHeight: 1.05, maxWidth: 980 }}>
+          <div style={{ fontSize: 64, fontWeight: 800, lineHeight: 1.05, maxWidth: 980, display: "flex" }}>
             Prove what your <span style={{ color: "#6366f1" }}>AI agents</span> did.
           </div>
           <div style={{ fontSize: 28, color: "#9aa6cc", maxWidth: 880 }}>
