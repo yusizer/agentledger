@@ -56,7 +56,9 @@ A DynamoDB conditional write gives optimistic concurrency on **one item**; it
 cannot express "the chain tail is unique across all writers" as cheaply as a
 `UNIQUE` constraint + multi-writer OCC. DSQL's lock-free, strongly-consistent,
 multi-row OCC is the deliberate fit for an append-only ledger with concurrent
-writers — the "only-DSQL-can-do-this" axis for Originality + Tech.
+writers — the DSQL-fit axis for Originality + Tech (Postgres can hash-chain
+with `UNIQUE` + serializable isolation; DSQL adds lock-free OCC and a
+multi-region active-active path as one logical database).
 
 ## Contention note — sequential `seq` PK is a deliberate trade-off
 

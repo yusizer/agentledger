@@ -91,8 +91,10 @@ content (C2PA) and for on-chain agents (ERC-8004) runs on an AWS database with t
 right consistency model — no gas, no L1 latency, strong consistent reads from any
 endpoint, and a multi-region active-active path to a *globally*-consistent ledger.
 ERC-8004 chooses on-chain for decentralised trust; AgentLedger chooses Aurora DSQL
-for enterprise / agent-platform trust. Nobody on H0 is building the **off-chain,
-DB-consistency-rooted** side of the agent-trust stack.
+for enterprise / agent-platform trust. Most H0 agent-observability entries
+settle for an app-layer audit log; AgentLedger roots trust in the **DB
+consistency model** — the off-chain, DB-consistency-rooted side of the
+agent-trust stack.
 
 ## Architecture diagram
 `docs/architecture.svg` — v0/Next.js on Vercel → API routes → Aurora DSQL

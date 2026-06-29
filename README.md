@@ -44,8 +44,10 @@ This is the insight the H0 judges (AWS DB specialists) score on:
   single-Region; multi-region is the documented production path.)
 
 A DynamoDB conditional write gives OCC on one item; DSQL gives multi-row,
-lock-free, strongly-consistent OCC across the whole chain — the "only-DSQL-can-
-do-this" demo.
+lock-free, strongly-consistent OCC across the whole chain — the deliberate DSQL
+fit (Postgres can enforce a hash-chain with `UNIQUE` + serializable isolation;
+DSQL adds lock-free OCC and a multi-region active-active path as one logical
+database).
 
 ## Originality — the DB consistency model *is* the trust protocol
 
