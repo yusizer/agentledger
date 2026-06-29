@@ -1,0 +1,27 @@
+Amazon Aurora DSQL — receipts table  (read-only SELECT · IAM auth · @aws/aurora-dsql-node-postgres-connector)
+cluster: gvt4hoplihfo4v2euvr3xqp4de.dsql.us-east-1.on.aws   region: us-east-1   30 rows total · showing 20
+
+seq | agent_id      | action | target               | prev_hash[:12]   | receipt_hash[:12]
+----+---------------+--------+----------------------+------------------+------------------
+01 | agent-alpha   | scan   | bounty:e839bf22-6c9  | 000000000000 | 18f8ca85beba
+02 | agent-beta    | rank   | bounty:e839bf22-6c9  | 18f8ca85beba | 9884e3251815
+03 | agent-gamma   | draft  | bounty:e839bf22-6c9  | 9884e3251815 | 7a60de57b8c9
+04 | agent-alpha   | scan   | bounty:3c4abc68-48f  | 7a60de57b8c9 | 3cf8a05a8a64
+05 | agent-beta    | rank   | bounty:3c4abc68-48f  | 3cf8a05a8a64 | 58b0d6e010d8
+06 | agent-gamma   | draft  | bounty:3c4abc68-48f  | 58b0d6e010d8 | 930484ccfaa3
+07 | agent-alpha   | scan   | bounty:29812         | 930484ccfaa3 | 6990b832e63a
+08 | agent-beta    | rank   | bounty:29812         | 6990b832e63a | 279fec833025
+09 | agent-gamma   | draft  | bounty:29812         | 279fec833025 | 050bd415ab3a
+10 | agent-alpha   | scan   | bounty:29624         | 050bd415ab3a | 38f2d4dc4bab
+11 | agent-beta    | rank   | bounty:29624         | 38f2d4dc4bab | 11562068ad25
+12 | agent-gamma   | draft  | bounty:29624         | 11562068ad25 | ecad25319557
+13 | agent-alpha   | scan   | bounty:1694233       | ecad25319557 | 1cf066f94400
+14 | agent-beta    | rank   | bounty:1694233       | 1cf066f94400 | 660d24aef946
+15 | agent-gamma   | draft  | bounty:1694233       | 660d24aef946 | 5fa9384132a9
+16 | agent-alpha   | scan   | bounty:tx-sub-mqa61  | 5fa9384132a9 | d3e6541536e6
+17 | agent-beta    | rank   | bounty:tx-sub-mqa61  | d3e6541536e6 | 454d7ceb5f1f
+18 | agent-gamma   | draft  | bounty:tx-sub-mqa61  | 454d7ceb5f1f | 98e0d72a9e43
+19 | agent-alpha   | scan   | bounty:2e82e79d-d17  | 98e0d72a9e43 | 44a8fb485a3e
+20 | agent-beta    | rank   | bounty:2e82e79d-d17  | 44a8fb485a3e | fbedab7c042d
+
+prev_hash(N) === receipt_hash(N-1)  ·  genesis prev_hash = 0^64  ·  tamper any cell → verify() flags it + every later row
