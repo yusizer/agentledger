@@ -23,7 +23,7 @@ interface SingleVerify {
 
 function Row({ label, value, mono = true, ok }: { label: string; value: string; mono?: boolean; ok?: boolean }) {
   return (
-    <div className="grid grid-cols-3 gap-2 items-start text-xs py-1.5 border-b border-slate-800/60 last:border-0">
+    <div className="grid grid-cols-3 gap-2 items-start text-xs py-1.5 border-b border-white/[0.06] last:border-0">
       <div className="text-slate-500">{label}</div>
       <div className={`col-span-2 break-all ${mono ? "font-mono" : ""} ${ok === false ? "text-rose-300" : ok === true ? "text-emerald-300" : "text-slate-300"}`}>
         {value}
@@ -86,7 +86,7 @@ function VerifyInner() {
     <main className="min-h-screen max-w-3xl mx-auto px-4 py-8">
       <header className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-white">
-          Verify a <span className="text-brand">receipt</span>
+          Verify a <span className="brand-text">receipt</span>
         </h1>
         <p className="text-sm text-slate-400 mt-1">
           Public, read-only verification. Paste a <span className="font-mono text-slate-300">receipt_id</span> —
@@ -102,7 +102,7 @@ function VerifyInner() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="e.g. 9a3f...  (UUID)"
-            className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm font-mono"
+            className="flex-1 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2 text-sm font-mono focus:border-brand-light/40"
             spellCheck={false}
             autoComplete="off"
           />
