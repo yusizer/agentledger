@@ -124,9 +124,17 @@ Generated from **live AWS API calls** (`npm run aws:proof`, `scripts/aws-proof.m
 Agent-trust is a 2026 problem. AgentLedger is the off-chain, AWS-backed
 attestation layer — shippable as a sidecar to any agent platform, and the
 deliberate DSQL data model (append-only OCC, strong consistency) is the same
-foundation a production agent-attestation service would run on. The demo dataset
-runs over **real scraped bounty listings** (the hunter radar the builder already
-operates), so it's not a toy.
+foundation a production agent-attestation service would run on.
+
+This is **not a toy over mock rows.** The builder already operates a real
+bounty-hunting pipeline — **96 live listings across 10 platforms worth $8.85M,
+12 closing within 3 days** — and AgentLedger is the attestation sidecar to that
+pipeline: every `scan` / `rank` / `submit` an agent performs on a real listing
+becomes a verifiable receipt. The demo seeds three agent personas acting over ten
+of those real scraped bounties, so judges see receipts over genuine targets, not
+`bounty:example-1`. The pain is personal — the builder is the user — and the
+trust layer is the missing piece between "an agent claimed it acted" and "anyone
+can prove it did, and detect if the story was edited."
 
 ## What's next
 - Verify a receipt's `input_hash`/`output_hash` against an external payload
