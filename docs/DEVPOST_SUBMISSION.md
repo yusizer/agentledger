@@ -127,8 +127,8 @@ deliberate DSQL data model (append-only OCC, strong consistency) is the same
 foundation a production agent-attestation service would run on.
 
 This is **not a toy over mock rows.** The builder already operates a real
-bounty-hunting pipeline — **96 live listings across 10 platforms worth $8.85M,
-12 closing within 3 days** — and AgentLedger is the attestation sidecar to that
+bounty-hunting pipeline — **96 listings across 10 platforms worth $8.85M,
+20 closing within 3 days (12 with cash prizes)** — and AgentLedger is the attestation sidecar to that
 pipeline: every `scan` / `rank` / `submit` an agent performs on a real listing
 becomes a verifiable receipt. The demo seeds three agent personas acting over ten
 of those real scraped bounties, so judges see receipts over genuine targets, not
