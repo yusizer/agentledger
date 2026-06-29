@@ -70,6 +70,7 @@ export async function listReceipts(): Promise<Receipt[]> {
   );
   return rows.map((r) => ({
     ...r,
+    seq: Number(r.seq),
     payload: r.payload ? (typeof r.payload === "string" ? JSON.parse(r.payload) : r.payload) : null,
     ts: Number(r.ts),
   })) as Receipt[];

@@ -9,7 +9,10 @@ export function ChainViz({
   receipts: Receipt[];
   verify: VerifyResult | null;
 }) {
-  const statusOf = (seq: number) => verify?.receipts.find((r) => r.seq === seq);
+  // compare as numbers: DSQL returns BIGINT seq as a string in some paths, and a
+  // string-vs-number mismatch would make every block render as "tampered" even
+  // when the chain is intact.
+  const statusOf = (seq: number) => verify?.receipts.find((r) => Number(r.seq) === Number(seq));
   if (!receipts.length) {
     return <p className="text-slate-500 text-sm">No receipts yet — seed the demo or append an action.</p>;
   }
